@@ -1,0 +1,76 @@
+#include <QTRSensors.h>
+
+unsigned int sensor_values[8];
+
+
+
+int leitura1 = 0, leitura2 = 0, aux = 0, aux2 = 1023, pwm = 130, pwmi = 130, outBack = 3150;
+unsigned long calib,tempo;
+double offset, erro , p, integral = 0, kp = 0.052, ki = 0,i, Turn, kd = 0.5, d, erroAnterior = 0 ; //kp = 0.32, ki = 0, kd = 2.2
+
+double MotorA = 0, MotorB = 0; //Valor de PWM dos motores de 0 a 255
+#define SaidaA 9
+#define SaidaB 3
+
+#define BIN2 2
+#define BIN1 4
+#define AIN2 6
+#define AIN1 5
+
+QTRSensorsRC qtra((unsigned char[]) {A2, A1, A0, A7, A6, A4}, 6);
+
+void setup() {
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  pinMode(A4, INPUT);
+  pinMode(A5, INPUT);
+  pinMode(A6, INPUT);
+  pinMode(A7, INPUT);
+  pinMode(AIN1, OUTPUT);
+  pinMode(AIN2, OUTPUT);
+  pinMode(BIN1, OUTPUT);
+  pinMode(BIN2, OUTPUT);
+  pinMode(SaidaA, OUTPUT);
+  pinMode(SaidaB, OUTPUT);
+  
+  Serial.begin(9600);
+  Serial.println("Iniciando calibração");
+int i;
+  for (i = 0; i < 140; i++)  // make the calibration take about 2 seconds
+  {
+    qtra.calibrate();
+    delay(50 );
+/*
+    qtra.read(sensor_values);
+    if(aux < sensor_values[0]){
+      aux = sensor_values[0];
+    }
+    if(aux2 > sensor_values[0]){
+      aux2 = sensor_values[0];
+    }*/
+  }
+  Serial.println("Fim da calibração");
+  /*
+  offset = (aux + aux2)/2;
+
+  Serial.print("Maior leitura:");
+  Serial.println(aux);
+  Serial.println("Menor leitura:");
+  Serial.println(aux2);
+  Serial.println("Terminando calibração");
+*/
+}
+
+void loop() {
+  qtra.read(sensor_values);
+  for(int i= 0; i<6; i++){
+    Serial.print("IO[" + String(i+1) + "]:  ");
+    Serial.print(sensor_values[i]);
+    Serial.print("  ");
+  }
+  delay(800);
+  Serial.println("");
+
+}

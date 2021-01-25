@@ -1,0 +1,336 @@
+//#include <QTRSensors.h>
+
+unsigned int sensor_values[8];
+
+void Seguir();
+void Calibrar();
+
+int leitura1 = 0,
+    leitura2 = 0,
+    aux = 0, 
+    aux2 = 1023, 
+    pwm = 60, 
+    pwmi = 60, 
+    outBack = 0;
+
+//Variáveis do Bluetooth
+  String comando, aux3;
+  char recebeCaracter, CaracterTela2, tipo;
+  double valor;
+  int AuxPWM, AuxOutback;
+    
+unsigned long calib,tempo;
+
+double offset, erro, p, integral = 0, kp = 0, ki = 0, i, Turn, kd = 0, d, erroAnterior = 0; 
+
+double MotorA = 0, MotorB = 0; 
+       
+#define SaidaA 9
+#define SaidaB 3
+
+#define BIN2 2
+#define BIN1 4
+#define AIN2 6
+#define AIN1 5
+
+//QTRSensorsAnalog qtra((unsigned char[]) {A5, A4, A6, A7, A0, A1, A2, A3}, 8);
+
+void setup() 
+{
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  pinMode(A4, INPUT);
+  pinMode(A5, INPUT);
+  pinMode(A6, INPUT);
+  pinMode(A7, INPUT);
+  pinMode(AIN1, OUTPUT);
+  pinMode(AIN2, OUTPUT);
+  pinMode(BIN1, OUTPUT);
+  pinMode(BIN2, OUTPUT);
+  pinMode(SaidaA, OUTPUT);
+  pinMode(SaidaB, OUTPUT);
+  
+  Serial.begin(9600);
+  
+  
+}
+void loop() 
+{
+   while(Serial.available())
+  {
+    delay(100);
+    recebeCaracter = Serial.read();
+    comando += recebeCaracter;
+    delay(100);
+
+    if(recebeCaracter == ';')
+    {
+      tipo = comando[0];
+      if(tipo == 'P')
+      {
+        aux3 = comando.substring(1,comando.length() - 1);
+        valor = aux3.toDouble();
+        kp = valor;
+      }
+      else if(tipo == 'I')
+      {
+        aux3 = comando.substring(1,comando.length() - 1);
+        valor = aux3.toDouble();
+        ki = valor;
+      }
+      else if(tipo == 'D')
+      {
+        aux3 = comando.substring(1,comando.length() - 1);
+        valor = aux3.toDouble();
+        kd = valor;
+      }
+     /* else if(tipo == 'E')
+      {
+       aux = comando.substring(1,comando.length() - 1);
+       valor = aux.toDouble();
+       erro = valor;
+      }*/
+      else if(tipo == 'W')
+      {
+        aux3 = comando.substring(1,comando.length() - 1);
+        AuxPWM = aux3.toInt();
+        pwm = AuxPWM;
+      }
+       else if(tipo == 'C')
+       {
+          Calibrar();
+       }
+       else if(tipo == 'S')
+       {
+          while(tipo == 'S')
+          {
+            if(Serial.available())
+            {
+              tipo = Serial.read();
+            }
+            
+            Seguir();
+          }
+       }
+       else if(tipo == 'R')
+       {
+          Parar();
+       }
+       
+        /*else if(tipo == 'R')
+      {
+        aux = comando.substring(1,comando.length() - 1);
+        AuxOutback = aux.toInt();
+        outBack = AuxOutback;
+      } */
+      comando = "";
+    }
+    
+  }
+Serial.println("tamo aq");
+
+
+}
+  
+  
+  
+ 
+
+
+void ModoManual_Frente(){
+    analogWrite(AIN1, 120);
+    analogWrite(BIN1, 120);
+    analogWrite(AIN2, 0);
+    analogWrite(BIN2, 0);
+  }
+
+void ModoManual_FrenteEsquerda()
+{
+    analogWrite(AIN1, 120); 
+    analogWrite(AIN2, 0);
+    analogWrite(AINB1, 120);    
+    analogWrite(AINB2, 0);
+ }
+
+void ModoManual_FrenteDireita()
+{
+    analogWrite(AINB1, 120); 
+    analogWrite(AINB2, 0);
+    analogWrite(AINB1, 120);      
+    analogWrite(AINB2, 0);
+ }
+
+void ModoManual_Tras()
+{
+    analogWrite(AINB1, 0);
+    analogWrite(AINB1, 0);
+    analogWrite(AINB2, 120);
+    analogWrite(AINB2, 120);
+}
+
+void ModoManual_TrasEsquerda()
+{
+    analogWrite(AINB1, 0);   
+    analogWrite(AINB2, 120);
+    analogWrite(AINB1, 0); 
+    analogWrite(AINB2, 120);
+ }
+
+void Manual_TrasDireita(){
+    analogWrite(AINB1, 0);   
+    analogWrite(AINB2, 120);
+    analogWrite(AINB1, 0);   
+    analogWrite(AINB2, 120);
+  }
+
+void Manual_Esquerda(){
+    analogWrite(AINB1, 0);
+    analogWrite(AINB2, 120);
+    analogWrite(AINB1, 120);
+    analogWrite(AINB2, 0);
+  }
+
+void ModoManual_direita()
+{  
+    analogWrite(AINB1, 120);
+    analogWrite(AINB2, 0);
+    analogWrite(AINB1, 0);
+    analogWrite(AINB2, 120);
+}
+
+void Parar(){
+      analogWrite(SaidaA, 0);
+      analogWrite(SaidaB, 0);
+}
+
+void Seguir()
+{
+  tempo = millis() - calib ;
+  
+  if(tempo > 58350)
+  {
+    
+    while(1)
+    {
+      analogWrite(SaidaA, 0);
+      analogWrite(SaidaB, 0);
+    }
+    
+  }
+  
+  leitura1 = 0;
+  leitura2 = 0;
+  
+  qtra.read(sensor_values);
+  for(int i= 1; i<=3; i++)
+  {
+    leitura1 += sensor_values[i];
+    leitura2 += sensor_values[i+3];    
+  }
+    erro = leitura1 - leitura2;
+
+  if(sensor_values[1] < 550 && abs(erro) > 700)
+  { // Robo muito fora da linha sensor_values[0] < 50
+    while(sensor_values[3] > 580)
+    {
+      digitalWrite(BIN2, LOW);
+      digitalWrite(BIN1, HIGH);
+      digitalWrite(AIN1, LOW);
+      digitalWrite(AIN2, HIGH);
+      analogWrite(SaidaA, pwmi);
+      analogWrite(SaidaB, pwmi);
+      qtra.read(sensor_values);
+  //0470000
+      Serial.println(sensor_values[3]);
+      leitura1 = 0; leitura2 = 0;
+      for(int i= 1; i<=3; i++)
+      {
+        leitura1 += sensor_values[i];
+        leitura2 += sensor_values[i+3]; 
+        digitalWrite(13, HIGH);   
+      } 
+   }
+  }
+  if(sensor_values[6] < 550  && abs(erro) >  700) 
+  {
+    while(sensor_values[4] > 580)
+    {                                   //sentido 2 sensor_values[8] < 50
+      digitalWrite(BIN1, LOW);
+      digitalWrite(BIN2, HIGH);
+      digitalWrite(AIN2, LOW);
+      digitalWrite(AIN1, HIGH);
+      analogWrite(SaidaA, pwmi);
+      analogWrite(SaidaB, pwmi);
+      qtra.read(sensor_values);
+      leitura1 = 0; leitura2 = 0;
+      
+      for(int i= 1; i<=3; i++)
+      {
+        leitura1 += sensor_values[i];
+        leitura2 += sensor_values[i+3];   
+        digitalWrite(13, HIGH);
+      }
+    }
+  }
+  
+  digitalWrite(13, LOW); 
+  p = erro * kp;
+  
+  integral += erro;
+  i = ki * integral;
+ 
+  d = kd * (erro - erroAnterior);
+  
+  erroAnterior = erro;
+  Turn = p + i + d;
+  MotorA = pwm + Turn;
+  MotorB = pwm - Turn;
+
+  digitalWrite(BIN2, LOW);
+  digitalWrite(BIN1, HIGH);
+  digitalWrite(AIN2, LOW);
+  digitalWrite(AIN1, HIGH);
+
+  if(MotorA < 0)
+  {
+     digitalWrite(AIN2, HIGH);
+     digitalWrite(AIN1, LOW);
+    
+  }
+  if(MotorB < 0)
+  {
+    digitalWrite(BIN2, HIGH);
+    digitalWrite(BIN1, LOW);
+  }
+  
+  analogWrite(SaidaA, MotorA);
+  analogWrite(SaidaB, MotorB);
+}
+//FINALIZANDO MODO SEGUIR <<<<<<<<<<<<<<<
+
+void Calibrar()
+{
+  int i;
+  analogWrite(SaidaA, 0);
+  analogWrite(SaidaB, 0);
+  for (i = 0; i < 250; i++)
+  {
+    qtra.calibrate();
+    delay(5);
+
+    qtra.read(sensor_values);
+    if(aux < sensor_values[0])
+    {
+      aux = sensor_values[0];
+    }
+    if(aux2 > sensor_values[0])
+    {
+      aux2 = sensor_values[0];
+    }
+  }
+  
+  offset = (aux + aux2)/2;
+  calib = millis();
+}
